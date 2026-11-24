@@ -1,0 +1,2069 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pushpaka Vimana — Interactive 3D Lotus Chariot</title>
+  <!-- Tailwind CSS for responsive glassmorphic HUD -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Cinzel for epic mythic headers & Inter for clean UI controls -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- Three.js r128 & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #16100a;
+      font-family: 'Inter', sans-serif;
+    }
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+    .font-mythic {
+      font-family: 'Cinzel', serif;
+    }
+    /* Custom gold range slider styling */
+    input[type="range"].gold-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 215, 130, 0.2);
+      height: 6px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"].gold-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fff3c4, #d99b26 70%, #8a5a08);
+      border: 2px solid #fff7dc;
+      box-shadow: 0 0 10px rgba(245, 185, 66, 0.8);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    input[type="range"].gold-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+    input[type="range"].gold-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fff3c4, #d99b26 70%, #8a5a08);
+      border: 2px solid #fff7dc;
+      box-shadow: 0 0 10px rgba(245, 185, 66, 0.8);
+      cursor: pointer;
+    }
+    .glass-panel {
+      background: rgba(18, 13, 9, 0.68);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(242, 193, 92, 0.28);
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 232, 175, 0.14);
+    }
+    .preset-btn {
+      transition: all 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .preset-btn.active {
+      background: linear-gradient(135deg, rgba(235, 178, 68, 0.36), rgba(168, 102, 20, 0.42));
+      border-color: rgba(255, 216, 128, 0.85);
+      color: #fff6db;
+      box-shadow: 0 0 16px rgba(235, 178, 68, 0.32);
+    }
+    @keyframes spinSlow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .loader-ring {
+      animation: spinSlow 2.4s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <!-- Fullscreen 3D Viewport -->
+  <div id="canvas-container"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#120c07] transition-opacity duration-700">
+    <div class="relative w-20 h-20 mb-5 flex items-center justify-center">
+      <div class="loader-ring absolute inset-0 rounded-full border-2 border-amber-400/20 border-t-amber-300"></div>
+      <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-600 to-yellow-200 opacity-85 shadow-lg shadow-amber-500/40"></div>
+    </div>
+    <h1 class="font-mythic text-xl sm:text-2xl tracking-widest text-amber-200 uppercase">Pushpaka Vimana</h1>
+    <p id="loading-status" class="mt-2 text-xs sm:text-sm text-amber-100/70 tracking-wide">Sculpting lotus petals &amp; golden filigree...</p>
+  </div>
+
+  <!-- Top Header Bar -->
+  <header id="hud-header" class="fixed top-3 left-3 right-3 sm:top-5 sm:left-5 sm:right-5 z-20 flex items-start justify-between pointer-events-none transition-opacity duration-300">
+    <div class="glass-panel rounded-2xl px-4 py-2.5 sm:px-5 sm:py-3 pointer-events-auto max-w-[72%] sm:max-w-md">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+        <h1 class="font-mythic text-sm sm:text-lg font-bold tracking-wider text-amber-200 leading-tight">
+          PUSHPAKA VIMANA
+        </h1>
+      </div>
+      <p class="text-[11px] sm:text-xs text-amber-100/75 mt-0.5 leading-snug">
+        1:1 Human Scale (1.68m) &bull; Hollow Colonnade Deck &bull; 24 Upper Lotus Petals &bull; 32 High-Speed Rotor Blades
+      </p>
+    </div>
+
+    <!-- Toggle UI Visibility Button -->
+    <button
+      id="toggle-ui-btn"
+      type="button"
+      class="glass-panel pointer-events-auto rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium text-amber-100 hover:text-white hover:border-amber-300/60 transition flex items-center gap-2 cursor-pointer"
+      title="Toggle Interface (H)"
+    >
+      <svg id="eye-icon" class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+      </svg>
+      <span id="toggle-ui-label">Hide UI</span>
+    </button>
+  </header>
+
+  <!-- Bottom Control Dock -->
+  <div id="hud-controls" class="fixed bottom-3 left-3 right-3 sm:bottom-5 sm:left-5 sm:right-5 z-20 flex flex-col lg:flex-row items-stretch lg:items-end justify-between gap-2.5 sm:gap-3 pointer-events-none transition-opacity duration-300">
+    
+    <!-- Camera Preset Selector -->
+    <div class="glass-panel rounded-2xl p-2 sm:p-2.5 pointer-events-auto flex flex-col gap-1.5">
+      <div class="px-1.5 flex items-center justify-between">
+        <span class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-amber-300/85">Camera Views</span>
+        <span class="text-[10px] text-amber-100/50 hidden sm:inline">Drag to Orbit &bull; Scroll/Pinch to Zoom</span>
+      </div>
+      <div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5">
+        <button data-preset="0" class="preset-btn active rounded-xl border border-amber-400/25 bg-white/5 px-3 py-2 text-left sm:text-center text-xs font-medium text-amber-100/90 hover:bg-amber-400/15 cursor-pointer">
+          1. Woman &amp; Hollow Deck
+        </button>
+        <button data-preset="1" class="preset-btn rounded-xl border border-amber-400/25 bg-white/5 px-3 py-2 text-left sm:text-center text-xs font-medium text-amber-100/90 hover:bg-amber-400/15 cursor-pointer">
+          2. Aerial Lotus Vimana
+        </button>
+        <button data-preset="2" class="preset-btn rounded-xl border border-amber-400/25 bg-white/5 px-3 py-2 text-left sm:text-center text-xs font-medium text-amber-100/90 hover:bg-amber-400/15 cursor-pointer">
+          3. Upper Curved Lotus Petals
+        </button>
+        <button data-preset="3" class="preset-btn rounded-xl border border-amber-400/25 bg-white/5 px-3 py-2 text-left sm:text-center text-xs font-medium text-amber-100/90 hover:bg-amber-400/15 cursor-pointer">
+          4. Fast Rotor &amp; Under-Deck
+        </button>
+      </div>
+    </div>
+
+    <!-- Rotor Speed & Slow-Mo Inspect Control -->
+    <div class="glass-panel rounded-2xl p-3 sm:px-4 sm:py-3 pointer-events-auto flex flex-col gap-2 min-w-[260px] sm:min-w-[310px]">
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-[10px] sm:text-[11px] font-semibold uppercase tracking-widest text-amber-300/85">Lower Lotus Rotor</span>
+        <div class="flex items-center gap-1.5">
+          <span id="speed-readout" class="text-xs font-semibold text-amber-200 tabular-nums">15.0 rad/s (143 RPM)</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <input
+          id="rotor-speed-slider"
+          type="range"
+          min="0"
+          max="26"
+          step="0.1"
+          value="15.0"
+          class="gold-slider flex-1"
+          aria-label="Lower Lotus Rotor Angular Speed"
+        />
+        <button
+          id="slowmo-btn"
+          type="button"
+          class="rounded-xl border border-amber-300/40 bg-amber-500/20 hover:bg-amber-400/30 px-2.5 py-1.5 text-[11px] font-semibold text-amber-100 transition cursor-pointer whitespace-nowrap"
+        >
+          Slow-Mo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. SCENE, RENDERER, ENVIRONMENT MAP & LIGHTING SETUP
+      // =========================================================================
+      const container = document.getElementById('canvas-container');
+      const loadingScreen = document.getElementById('loading-screen');
+
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0xe6b67a, 0.00145);
+
+      const camera = new THREE.PerspectiveCamera(
+        46,
+        window.innerWidth / window.innerHeight,
+        0.12,
+        1800
+      );
+
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        powerPreference: 'high-performance'
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.12;
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      container.appendChild(renderer.domElement);
+
+      // OrbitControls setup
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.rotateSpeed = 0.72;
+      controls.zoomSpeed = 0.9;
+      controls.panSpeed = 0.75;
+      controls.minDistance = 1.1;
+      controls.maxDistance = 140;
+      controls.maxPolarAngle = Math.PI * 0.96;
+
+      // Build procedural Golden-Hour Sky Dome + PMREM Environment Map for realistic metallic gold reflections
+      function createSkyAndEnvMap() {
+        const skyGeo = new THREE.SphereGeometry(950, 48, 32);
+        const skyMat = new THREE.ShaderMaterial({
+          side: THREE.BackSide,
+          depthWrite: false,
+          uniforms: {
+            topColor: { value: new THREE.Color(0x284b7a) },
+            midColor: { value: new THREE.Color(0xc88b54) },
+            horizonColor: { value: new THREE.Color(0xffe0a3) },
+            bottomColor: { value: new THREE.Color(0x9e7448) },
+            sunDir: { value: new THREE.Vector3(0.68, 0.34, -0.65).normalize() }
+          },
+          vertexShader: `
+            varying vec3 vWorldPos;
+            void main() {
+              vec4 wp = modelMatrix * vec4(position, 1.0);
+              vWorldPos = wp.xyz;
+              gl_Position = projectionMatrix * viewMatrix * wp;
+            }
+          `,
+          fragmentShader: `
+            uniform vec3 topColor;
+            uniform vec3 midColor;
+            uniform vec3 horizonColor;
+            uniform vec3 bottomColor;
+            uniform vec3 sunDir;
+            varying vec3 vWorldPos;
+            void main() {
+              vec3 dir = normalize(vWorldPos);
+              float h = dir.y;
+              vec3 col;
+              if (h >= 0.0) {
+                float t1 = smoothstep(0.0, 0.24, h);
+                float t2 = smoothstep(0.18, 0.85, h);
+                col = mix(horizonColor, midColor, t1);
+                col = mix(col, topColor, t2);
+              } else {
+                float tb = smoothstep(0.0, -0.45, h);
+                col = mix(horizonColor, bottomColor, tb);
+              }
+              float sunAmt = max(dot(dir, sunDir), 0.0);
+              col += vec3(1.0, 0.84, 0.52) * pow(sunAmt, 14.0) * 0.45;
+              col += vec3(1.0, 0.95, 0.82) * pow(sunAmt, 180.0) * 1.4;
+              gl_FragColor = vec4(col, 1.0);
+            }
+          `
+        });
+        const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+        scene.add(skyMesh);
+
+        // Generate PMREM envMap from a dedicated environment scene
+        const envScene = new THREE.Scene();
+        envScene.add(new THREE.Mesh(skyGeo.clone(), skyMat.clone()));
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        pmrem.compileEquirectangularShader();
+        const envRT = pmrem.fromScene(envScene, 0.035);
+        scene.environment = envRT.texture;
+        pmrem.dispose();
+      }
+      createSkyAndEnvMap();
+
+      // Golden-Hour Sun & Atmospheric Lighting
+      const hemiLight = new THREE.HemisphereLight(0xffe9c2, 0x5c472e, 0.95);
+      scene.add(hemiLight);
+
+      const sunLight = new THREE.DirectionalLight(0xffd28e, 2.65);
+      sunLight.position.set(68, 42, -62);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.width = 2048;
+      sunLight.shadow.mapSize.height = 2048;
+      sunLight.shadow.camera.near = 15;
+      sunLight.shadow.camera.far = 180;
+      const d = 26;
+      sunLight.shadow.camera.left = -d;
+      sunLight.shadow.camera.right = d;
+      sunLight.shadow.camera.top = d;
+      sunLight.shadow.camera.bottom = -d;
+      sunLight.shadow.bias = -0.0005;
+      scene.add(sunLight);
+
+      // Warm rim/bounce light from sunlit clouds below
+      const cloudBounceLight = new THREE.DirectionalLight(0xffb866, 0.95);
+      cloudBounceLight.position.set(-40, -35, 45);
+      scene.add(cloudBounceLight);
+
+      // =========================================================================
+      // 2. PROCEDURAL HIGH-RES PBR TEXTURE GENERATORS
+      // =========================================================================
+
+      // 2A. Upper Curved Lotus Petal Textures (Pearlescent Ivory-Gold + Branching Veins + Filigree Border)
+      function createUpperLotusPetalTextures() {
+        const w = 1024, h = 1024;
+        const colorCanvas = document.createElement('canvas');
+        colorCanvas.width = w; colorCanvas.height = h;
+        const ctx = colorCanvas.getContext('2d');
+
+        const bumpCanvas = document.createElement('canvas');
+        bumpCanvas.width = w; bumpCanvas.height = h;
+        const bctx = bumpCanvas.getContext('2d');
+
+        const roughCanvas = document.createElement('canvas');
+        roughCanvas.width = w; roughCanvas.height = h;
+        const rctx = roughCanvas.getContext('2d');
+
+        // Base pearlescent ivory-cream to warm golden-blush gradient
+        const grad = ctx.createLinearGradient(0, h, 0, 0);
+        grad.addColorStop(0.0, '#c6933d');
+        grad.addColorStop(0.16, '#edd9b4');
+        grad.addColorStop(0.48, '#fbf6ec');
+        grad.addColorStop(0.82, '#f5ebd8');
+        grad.addColorStop(1.0, '#d6a449');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Subtle pearlescent lateral sheen
+        const radGrad = ctx.createRadialGradient(w * 0.5, h * 0.52, 30, w * 0.5, h * 0.52, w * 0.52);
+        radGrad.addColorStop(0, 'rgba(255, 252, 245, 0.55)');
+        radGrad.addColorStop(0.65, 'rgba(232, 224, 238, 0.16)');
+        radGrad.addColorStop(1, 'rgba(176, 124, 42, 0.42)');
+        ctx.fillStyle = radGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Bump & roughness bases
+        bctx.fillStyle = '#787878';
+        bctx.fillRect(0, 0, w, h);
+        rctx.fillStyle = '#5a5a5a';
+        rctx.fillRect(0, 0, w, h);
+
+        // Draw delicate branching organic leaf veins radiating from central midrib
+        for (let side of [-1, 1]) {
+          for (let i = 1; i <= 34; i++) {
+            const t = i / 35;
+            const startY = h * (0.94 - t * 0.86);
+            const endY = startY - h * (0.09 + 0.06 * Math.sin(t * Math.PI));
+            const spread = w * 0.46 * Math.sin(Math.pow(t, 0.72) * Math.PI);
+            const endX = w * 0.5 + side * spread;
+            const cpX = w * 0.5 + side * spread * 0.52;
+            const cpY = startY - h * 0.015;
+
+            ctx.beginPath();
+            ctx.moveTo(w * 0.5, startY);
+            ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+            ctx.strokeStyle = i % 3 === 0 ? 'rgba(162, 112, 36, 0.48)' : 'rgba(184, 142, 74, 0.26)';
+            ctx.lineWidth = i % 3 === 0 ? 2.6 : 1.4;
+            ctx.stroke();
+
+            bctx.beginPath();
+            bctx.moveTo(w * 0.5, startY);
+            bctx.quadraticCurveTo(cpX, cpY, endX, endY);
+            bctx.strokeStyle = i % 3 === 0 ? '#b8b8b8' : '#969696';
+            bctx.lineWidth = i % 3 === 0 ? 3.2 : 1.8;
+            bctx.stroke();
+
+            // Fine secondary sub-veins
+            if (i % 2 === 0 && spread > 90) {
+              const midX = (w * 0.5 + endX) * 0.5;
+              const midY = (startY + endY) * 0.5;
+              ctx.beginPath();
+              ctx.moveTo(midX, midY);
+              ctx.lineTo(midX + side * spread * 0.25, midY - 38);
+              ctx.strokeStyle = 'rgba(170, 128, 60, 0.22)';
+              ctx.lineWidth = 1.0;
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Prominent metallic golden central midrib spine
+        const spineGrad = ctx.createLinearGradient(w * 0.485, 0, w * 0.515, 0);
+        spineGrad.addColorStop(0, '#9c6b19');
+        spineGrad.addColorStop(0.5, '#ffe28a');
+        spineGrad.addColorStop(1, '#9c6b19');
+        ctx.fillStyle = spineGrad;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.5, h * 0.02);
+        ctx.lineTo(w * 0.514, h * 0.98);
+        ctx.lineTo(w * 0.486, h * 0.98);
+        ctx.closePath();
+        ctx.fill();
+
+        bctx.fillStyle = '#ffffff';
+        bctx.fillRect(w * 0.491, h * 0.03, w * 0.018, h * 0.94);
+
+        // Ornate gold filigree border along outer UV margins
+        ctx.strokeStyle = '#c88c28';
+        ctx.lineWidth = 28;
+        ctx.strokeRect(14, 14, w - 28, h - 28);
+        ctx.strokeStyle = '#ffe18c';
+        ctx.lineWidth = 8;
+        ctx.strokeRect(30, 30, w - 60, h - 60);
+
+        // Filigree scrollwork dots along border
+        ctx.fillStyle = '#d99e32';
+        for (let y = 50; y < h - 50; y += 36) {
+          ctx.beginPath();
+          ctx.arc(44, y, 6, 0, Math.PI * 2);
+          ctx.arc(w - 44, y, 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        rctx.fillStyle = '#303030';
+        rctx.fillRect(w * 0.485, 0, w * 0.03, h);
+        rctx.strokeStyle = '#282828';
+        rctx.lineWidth = 34;
+        rctx.strokeRect(17, 17, w - 34, h - 34);
+
+        const map = new THREE.CanvasTexture(colorCanvas);
+        map.encoding = THREE.sRGBEncoding;
+        map.anisotropy = 8;
+
+        const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+        bumpMap.anisotropy = 8;
+
+        const roughnessMap = new THREE.CanvasTexture(roughCanvas);
+        roughnessMap.anisotropy = 8;
+
+        return { map, bumpMap, roughnessMap };
+      }
+
+      // 2B. Upper Bulbous Golden Dome Engraved Filigree & Chevron Textures
+      function createDomeFiligreeTextures() {
+        const w = 1024, h = 1024;
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+
+        const b = document.createElement('canvas');
+        b.width = w; b.height = h;
+        const bctx = b.getContext('2d');
+
+        // Rich 24K brushed gold base
+        const baseGrad = ctx.createLinearGradient(0, 0, 0, h);
+        baseGrad.addColorStop(0.0, '#f0be59');
+        baseGrad.addColorStop(0.3, '#d99b2e');
+        baseGrad.addColorStop(0.65, '#c78722');
+        baseGrad.addColorStop(1.0, '#9c6314');
+        ctx.fillStyle = baseGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        bctx.fillStyle = '#707070';
+        bctx.fillRect(0, 0, w, h);
+
+        // Horizontal engraved cornice rings
+        const ringYs = [90, 230, 390, 560, 740, 890, 975];
+        ringYs.forEach((ry) => {
+          ctx.fillStyle = '#75490b';
+          ctx.fillRect(0, ry - 10, w, 20);
+          ctx.fillStyle = '#ffe599';
+          ctx.fillRect(0, ry - 4, w, 8);
+
+          bctx.fillStyle = '#252525';
+          bctx.fillRect(0, ry - 10, w, 20);
+          bctx.fillStyle = '#f0f0f0';
+          bctx.fillRect(0, ry - 4, w, 8);
+        });
+
+        // Bold Triangular Chevron / Zigzag Bands (matching reference images 1 & 2)
+        function drawChevronBand(yTop, yBot, count, strokeCol, fillCol) {
+          const step = w / count;
+          ctx.beginPath();
+          bctx.beginPath();
+          for (let i = 0; i <= count; i++) {
+            const x = i * step;
+            const y = i % 2 === 0 ? yTop : yBot;
+            if (i === 0) {
+              ctx.moveTo(x, y);
+              bctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+              bctx.lineTo(x, y);
+            }
+          }
+          ctx.strokeStyle = strokeCol;
+          ctx.lineWidth = 10;
+          ctx.stroke();
+
+          bctx.strokeStyle = '#ffffff';
+          bctx.lineWidth = 12;
+          bctx.stroke();
+
+          // Inner nested triangles
+          for (let i = 0; i < count; i += 2) {
+            const cx = (i + 1) * step;
+            ctx.beginPath();
+            ctx.moveTo(cx - step * 0.65, yTop + 18);
+            ctx.lineTo(cx, yBot - 16);
+            ctx.lineTo(cx + step * 0.65, yTop + 18);
+            ctx.closePath();
+            ctx.fillStyle = fillCol;
+            ctx.fill();
+            ctx.strokeStyle = '#ffe69e';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+          }
+        }
+
+        drawChevronBand(105, 215, 24, '#5e3906', 'rgba(130, 72, 14, 0.55)');
+        drawChevronBand(245, 375, 24, '#ffe394', 'rgba(255, 224, 130, 0.25)');
+
+        // Ornate Lotus Mandala Medallions across the wide belly (y = 410 to 725)
+        const cols = 12;
+        const colW = w / cols;
+        for (let row = 0; row < 2; row++) {
+          const cy = row === 0 ? 475 : 650;
+          for (let i = 0; i < cols; i++) {
+            const cx = (i + 0.5) * colW;
+            // Outer arch frame
+            ctx.strokeStyle = '#6b4208';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, colW * 0.42, 0, Math.PI * 2);
+            ctx.stroke();
+
+            bctx.strokeStyle = '#e8e8e8';
+            bctx.lineWidth = 6;
+            bctx.beginPath();
+            bctx.arc(cx, cy, colW * 0.42, 0, Math.PI * 2);
+            bctx.stroke();
+
+            // 8-petal lotus rosette inside each medallion
+            for (let p = 0; p < 8; p++) {
+              const ang = (p / 8) * Math.PI * 2;
+              ctx.save();
+              ctx.translate(cx, cy);
+              ctx.rotate(ang);
+              ctx.beginPath();
+              ctx.ellipse(0, -colW * 0.21, colW * 0.08, colW * 0.17, 0, 0, Math.PI * 2);
+              ctx.fillStyle = 'rgba(255, 232, 158, 0.5)';
+              ctx.fill();
+              ctx.strokeStyle = '#7a4b0a';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+              ctx.restore();
+
+              bctx.save();
+              bctx.translate(cx, cy);
+              bctx.rotate(ang);
+              bctx.beginPath();
+              bctx.ellipse(0, -colW * 0.21, colW * 0.08, colW * 0.17, 0, 0, Math.PI * 2);
+              bctx.fillStyle = '#dcdcdc';
+              bctx.fill();
+              bctx.restore();
+            }
+          }
+        }
+
+        // Lower scalloped lotus arches (y = 750 to 880)
+        for (let i = 0; i < 16; i++) {
+          const cx = (i + 0.5) * (w / 16);
+          ctx.beginPath();
+          ctx.arc(cx, 880, w / 32, Math.PI, 0);
+          ctx.strokeStyle = '#ffe59c';
+          ctx.lineWidth = 6;
+          ctx.stroke();
+
+          bctx.beginPath();
+          bctx.arc(cx, 880, w / 32, Math.PI, 0);
+          bctx.strokeStyle = '#ffffff';
+          bctx.lineWidth = 7;
+          bctx.stroke();
+        }
+
+        const map = new THREE.CanvasTexture(c);
+        map.wrapS = THREE.RepeatWrapping;
+        map.wrapT = THREE.ClampToEdgeWrapping;
+        map.encoding = THREE.sRGBEncoding;
+        map.anisotropy = 8;
+
+        const bumpMap = new THREE.CanvasTexture(b);
+        bumpMap.wrapS = THREE.RepeatWrapping;
+        bumpMap.wrapT = THREE.ClampToEdgeWrapping;
+        bumpMap.anisotropy = 8;
+
+        return { map, bumpMap };
+      }
+
+      // 2C. Lower Rotor Lotus Blade Textures (Golden-Bronze Feathered Veins)
+      function createLowerRotorPetalTextures() {
+        const w = 512, h = 1024;
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+
+        const b = document.createElement('canvas');
+        b.width = w; b.height = h;
+        const bctx = b.getContext('2d');
+
+        // Rich metallic antique bronze-gold gradient
+        const grad = ctx.createLinearGradient(0, h, 0, 0);
+        grad.addColorStop(0.0, '#784c14');
+        grad.addColorStop(0.35, '#b87d28');
+        grad.addColorStop(0.75, '#dba03b');
+        grad.addColorStop(1.0, '#f5c767');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        bctx.fillStyle = '#686868';
+        bctx.fillRect(0, 0, w, h);
+
+        // Feathered herringbone leaf veins
+        for (let side of [-1, 1]) {
+          for (let i = 1; i <= 42; i++) {
+            const t = i / 43;
+            const y0 = h * (0.97 - t * 0.92);
+            const y1 = y0 - 52;
+            const x1 = w * 0.5 + side * w * 0.48;
+            ctx.beginPath();
+            ctx.moveTo(w * 0.5, y0);
+            ctx.quadraticCurveTo(w * 0.5 + side * w * 0.26, y0 - 12, x1, y1);
+            ctx.strokeStyle = i % 2 === 0 ? 'rgba(65, 38, 8, 0.65)' : 'rgba(255, 224, 145, 0.45)';
+            ctx.lineWidth = i % 2 === 0 ? 3.0 : 2.0;
+            ctx.stroke();
+
+            bctx.beginPath();
+            bctx.moveTo(w * 0.5, y0);
+            bctx.quadraticCurveTo(w * 0.5 + side * w * 0.26, y0 - 12, x1, y1);
+            bctx.strokeStyle = i % 2 === 0 ? '#2b2b2b' : '#dedede';
+            bctx.lineWidth = 3.2;
+            bctx.stroke();
+          }
+        }
+
+        // Strong central golden rib
+        ctx.fillStyle = '#f7cf74';
+        ctx.fillRect(w * 0.482, 0, w * 0.036, h);
+        bctx.fillStyle = '#ffffff';
+        bctx.fillRect(w * 0.48, 0, w * 0.04, h);
+
+        // Metallic edge highlight
+        ctx.strokeStyle = '#ffdf8e';
+        ctx.lineWidth = 14;
+        ctx.strokeRect(7, 7, w - 14, h - 14);
+
+        const map = new THREE.CanvasTexture(c);
+        map.encoding = THREE.sRGBEncoding;
+        map.anisotropy = 8;
+
+        const bumpMap = new THREE.CanvasTexture(b);
+        bumpMap.anisotropy = 8;
+
+        return { map, bumpMap };
+      }
+
+      // 2D. Hollow Deck Floor Mandala Texture (Annular walkway r = 4.2m to 9.5m)
+      function createDeckFloorTextures() {
+        const size = 1024;
+        const c = document.createElement('canvas');
+        c.width = size; c.height = size;
+        const ctx = c.getContext('2d');
+
+        const b = document.createElement('canvas');
+        b.width = size; b.height = size;
+        const bctx = b.getContext('2d');
+
+        const cx = size * 0.5, cy = size * 0.5;
+        ctx.fillStyle = '#8f5d1a';
+        ctx.fillRect(0, 0, size, size);
+        bctx.fillStyle = '#707070';
+        bctx.fillRect(0, 0, size, size);
+
+        // Concentric inlaid golden & deep crimson-bronze rings
+        const rings = [
+          { r: 495, col: '#d49831', lw: 26 },
+          { r: 455, col: '#692218', lw: 42 },
+          { r: 412, col: '#e8b44c', lw: 16 },
+          { r: 350, col: '#b87d24', lw: 90 },
+          { r: 285, col: '#7a291b', lw: 36 },
+          { r: 242, col: '#f2c363', lw: 22 }
+        ];
+        rings.forEach((rg) => {
+          ctx.beginPath();
+          ctx.arc(cx, cy, rg.r, 0, Math.PI * 2);
+          ctx.strokeStyle = rg.col;
+          ctx.lineWidth = rg.lw;
+          ctx.stroke();
+
+          bctx.beginPath();
+          bctx.arc(cx, cy, rg.r, 0, Math.PI * 2);
+          bctx.strokeStyle = '#cfcfcf';
+          bctx.lineWidth = rg.lw * 0.45;
+          bctx.stroke();
+        });
+
+        // 24 radial golden inlay rays & lotus petals around the walkway
+        for (let i = 0; i < 24; i++) {
+          const ang = (i / 24) * Math.PI * 2;
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate(ang);
+          ctx.beginPath();
+          ctx.moveTo(220, 0);
+          ctx.lineTo(505, 0);
+          ctx.strokeStyle = '#ffe08c';
+          ctx.lineWidth = 4;
+          ctx.stroke();
+
+          // Lotus motif on walkway floor
+          ctx.beginPath();
+          ctx.ellipse(355, 0, 38, 16, 0, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 218, 128, 0.35)';
+          ctx.fill();
+          ctx.strokeStyle = '#ffe08c';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+          ctx.restore();
+
+          bctx.save();
+          bctx.translate(cx, cy);
+          bctx.rotate(ang);
+          bctx.beginPath();
+          bctx.moveTo(220, 0);
+          bctx.lineTo(505, 0);
+          bctx.strokeStyle = '#ffffff';
+          bctx.lineWidth = 5;
+          bctx.stroke();
+          bctx.restore();
+        }
+
+        const map = new THREE.CanvasTexture(c);
+        map.encoding = THREE.sRGBEncoding;
+        map.anisotropy = 8;
+        const bumpMap = new THREE.CanvasTexture(b);
+        return { map, bumpMap };
+      }
+
+      const upperPetalTex = createUpperLotusPetalTextures();
+      const domeTex = createDomeFiligreeTextures();
+      const lowerRotorTex = createLowerRotorPetalTextures();
+      const floorTex = createDeckFloorTextures();
+
+      // =========================================================================
+      // 3. SHARED PBR MATERIALS
+      // =========================================================================
+      const polishedGoldMat = new THREE.MeshStandardMaterial({
+        color: 0xf4be52,
+        metalness: 0.9,
+        roughness: 0.24
+      });
+
+      const carvedAntiqueGoldMat = new THREE.MeshStandardMaterial({
+        color: 0xd99b2c,
+        metalness: 0.86,
+        roughness: 0.32
+      });
+
+      const domeGoldMat = new THREE.MeshStandardMaterial({
+        map: domeTex.map,
+        bumpMap: domeTex.bumpMap,
+        bumpScale: 0.14,
+        color: 0xffdf99,
+        metalness: 0.91,
+        roughness: 0.25
+      });
+
+      const upperPetalMat = new THREE.MeshStandardMaterial({
+        map: upperPetalTex.map,
+        bumpMap: upperPetalTex.bumpMap,
+        bumpScale: 0.08,
+        roughnessMap: upperPetalTex.roughnessMap,
+        color: 0xffffff,
+        metalness: 0.26,
+        roughness: 0.34,
+        side: THREE.DoubleSide
+      });
+
+      const lowerRotorPetalMat = new THREE.MeshStandardMaterial({
+        map: lowerRotorTex.map,
+        bumpMap: lowerRotorTex.bumpMap,
+        bumpScale: 0.12,
+        color: 0xffd782,
+        metalness: 0.88,
+        roughness: 0.28,
+        side: THREE.DoubleSide
+      });
+
+      // =========================================================================
+      // 4. SCULPTED 3D LOTUS PETAL GEOMETRY GENERATORS
+      // =========================================================================
+
+      /**
+       * Creates a sculpted 3D Upper Lotus Petal that curves upward and inward
+       * like a blooming lotus cup cradling the bulbous upper dome, with a
+       * recurved pointed tip and raised 3D central midrib.
+       */
+      function createUpperCurvedLotusPetalGeometry(options) {
+        const {
+          height = 9.4,
+          maxWidth = 4.4,
+          outwardBulge = 1.15,
+          inwardCup = -1.65,
+          tipRecurve = 0.65,
+          cupDepth = 0.58,
+          segU = 24,
+          segV = 36
+        } = options;
+
+        const geom = new THREE.BufferGeometry();
+        const positions = [];
+        const uvs = [];
+        const indices = [];
+
+        for (let iv = 0; iv <= segV; iv++) {
+          const v = iv / segV; // 0 = base, 1 = pointed tip
+          // Width envelope: wide lotus belly around v = 0.38, tapering smoothly to sharp point at v = 1.0
+          const widthEnv = Math.sin(Math.pow(v, 0.72) * Math.PI) * (1.0 - 0.12 * v);
+          const halfW = maxWidth * 0.5 * Math.max(widthEnv, 0.002);
+
+          // Radial curve profile (Z is radial outward from Vimana axis):
+          // Curves slightly outward near base (v ~ 0.28), then bends strongly inward
+          // around the dome belly (v ~ 0.78), then flares outward at the pointed tip (v -> 1.0)
+          const radialOffset =
+            Math.sin(v * Math.PI * 1.15) * outwardBulge +
+            Math.pow(v, 1.85) * inwardCup +
+            Math.pow(Math.max(0, (v - 0.76) / 0.24), 2.0) * tipRecurve;
+
+          const y = v * height;
+
+          for (let iu = 0; iu <= segU; iu++) {
+            const u = iu / segU; // 0..1 across width
+            const s = (u - 0.5) * 2.0; // -1..+1
+            const x = s * halfW;
+
+            // Concave cup across width + raised central golden spine ridge along s = 0
+            const concave = (1.0 - s * s) * cupDepth * Math.sin(v * Math.PI);
+            const midribRidge = Math.exp(-s * s * 42.0) * 0.14 * (1.0 - v * 0.5);
+            const z = radialOffset + concave + midribRidge;
+
+            positions.push(x, y, z);
+            uvs.push(u, v);
+          }
+        }
+
+        const stride = segU + 1;
+        for (let iv = 0; iv < segV; iv++) {
+          for (let iu = 0; iu < segU; iu++) {
+            const a = iv * stride + iu;
+            const b = a + 1;
+            const c = (iv + 1) * stride + iu;
+            const d = c + 1;
+            indices.push(a, b, d);
+            indices.push(a, d, c);
+          }
+        }
+
+        geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geom.setIndex(indices);
+        geom.computeVertexNormals();
+        return geom;
+      }
+
+      /**
+       * Creates a sculpted 3D Lanceolate Lower Rotor Lotus Blade extending radially outward
+       * with aerodynamic pitch camber, central structural rib, and pointed lotus tip.
+       */
+      function createLowerRotorBladeGeometry(length = 19.8, maxWidth = 4.3, camber = 0.24) {
+        const segU = 18;
+        const segV = 30;
+        const geom = new THREE.BufferGeometry();
+        const positions = [];
+        const uvs = [];
+        const indices = [];
+
+        for (let iv = 0; iv <= segV; iv++) {
+          const v = iv / segV; // 0 = rotor hub root, 1 = outer sharp tip
+          const widthEnv = Math.sin(Math.pow(v, 0.68) * Math.PI) * (1.05 - 0.15 * v);
+          const halfW = maxWidth * 0.5 * Math.max(widthEnv, 0.003);
+
+          // Radial distance from hub (starts at r = 2.0m)
+          const r = 2.0 + v * length;
+          // Gentle aerodynamic gull-wing curve
+          const yCurve = -Math.sin(v * Math.PI * 0.85) * 0.45 + Math.pow(v, 2.2) * 0.25;
+
+          for (let iu = 0; iu <= segU; iu++) {
+            const u = iu / segU;
+            const s = (u - 0.5) * 2.0; // -1..+1 across blade chord
+            const x = s * halfW;
+
+            // Airfoil camber + central ridge
+            const arch = (1.0 - s * s) * camber * Math.sin(v * Math.PI);
+            const pitchTilt = s * halfW * 0.16; // aerodynamic pitch angle
+            const ridge = Math.exp(-s * s * 36.0) * 0.11 * (1.0 - v * 0.4);
+            const y = yCurve + arch + pitchTilt + ridge;
+
+            positions.push(x, y, r);
+            uvs.push(u, v);
+          }
+        }
+
+        const stride = segU + 1;
+        for (let iv = 0; iv < segV; iv++) {
+          for (let iu = 0; iu < segU; iu++) {
+            const a = iv * stride + iu;
+            const b = a + 1;
+            const c = (iv + 1) * stride + iu;
+            const d = c + 1;
+            indices.push(a, d, b);
+            indices.push(a, c, d);
+          }
+        }
+
+        geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geom.setIndex(indices);
+        geom.computeVertexNormals();
+        return geom;
+      }
+
+      // =========================================================================
+      // 5. BUILD THE PUSHPAKA VIMANA (1 UNIT = 1 METER REAL-WORLD HUMAN SCALE)
+      // =========================================================================
+      const vimanaRoot = new THREE.Group();
+      scene.add(vimanaRoot);
+
+      // -------------------------------------------------------------------------
+      // 5A. INTERNALLY HOLLOW LOWER DECK (y = 0.0m to y = 4.6m)
+      //     Outer Radius = 9.5m | Inner Hollow Central Void Radius = 4.2m
+      // -------------------------------------------------------------------------
+      const lowerDeckGroup = new THREE.Group();
+      vimanaRoot.add(lowerDeckGroup);
+
+      // Annular Deck Slab (r = 4.2m to r = 9.5m, y = -0.62m to y = 0.0m)
+      // Built with LatheGeometry so the central well (r = 1.1m to 4.2m) is genuinely hollow!
+      const deckProfile = [
+        new THREE.Vector2(4.2, 0.0),
+        new THREE.Vector2(9.5, 0.0),
+        new THREE.Vector2(9.65, -0.14),
+        new THREE.Vector2(9.45, -0.34),
+        new THREE.Vector2(9.1, -0.62),
+        new THREE.Vector2(4.35, -0.62),
+        new THREE.Vector2(4.15, -0.32),
+        new THREE.Vector2(4.2, 0.0)
+      ];
+      const deckSlabGeo = new THREE.LatheGeometry(deckProfile, 72);
+      const deckSlabMat = new THREE.MeshStandardMaterial({
+        map: floorTex.map,
+        bumpMap: floorTex.bumpMap,
+        bumpScale: 0.06,
+        color: 0xffdf99,
+        metalness: 0.78,
+        roughness: 0.34
+      });
+      const deckSlabMesh = new THREE.Mesh(deckSlabGeo, deckSlabMat);
+      deckSlabMesh.receiveShadow = true;
+      deckSlabMesh.castShadow = true;
+      lowerDeckGroup.add(deckSlabMesh);
+
+      // Radial structural golden bridge spokes spanning across the bottom of the hollow well
+      // at y = -0.48m connecting the central column (r = 1.1m) to the outer deck ring (r = 4.25m)
+      // while leaving ~88% of the circular void completely open to view the spinning rotor below!
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        const spokeGroup = new THREE.Group();
+        spokeGroup.rotation.y = ang;
+
+        const beamGeo = new THREE.BoxGeometry(0.28, 0.24, 3.25);
+        const beamMesh = new THREE.Mesh(beamGeo, carvedAntiqueGoldMat);
+        beamMesh.position.set(0, -0.46, 2.68);
+        beamMesh.castShadow = true;
+        beamMesh.receiveShadow = true;
+        spokeGroup.add(beamMesh);
+
+        lowerDeckGroup.add(spokeGroup);
+      }
+
+      // Ornate Carved Golden Inner Railing around the 4.2m Hollow Central Void (y = 0.0m to 1.05m)
+      const innerRailingGroup = new THREE.Group();
+      lowerDeckGroup.add(innerRailingGroup);
+
+      const innerHandrailGeo = new THREE.TorusGeometry(4.26, 0.075, 16, 72);
+      innerHandrailGeo.rotateX(Math.PI / 2);
+      const innerHandrail = new THREE.Mesh(innerHandrailGeo, polishedGoldMat);
+      innerHandrail.position.y = 1.04;
+      innerHandrail.castShadow = true;
+      innerRailingGroup.add(innerHandrail);
+
+      const innerBaseRailGeo = new THREE.TorusGeometry(4.26, 0.09, 16, 72);
+      innerBaseRailGeo.rotateX(Math.PI / 2);
+      const innerBaseRail = new THREE.Mesh(innerBaseRailGeo, carvedAntiqueGoldMat);
+      innerBaseRail.position.y = 0.08;
+      innerRailingGroup.add(innerBaseRail);
+
+      // 36 Carved Balusters & Lotus Medallions around the hollow well railing
+      const balusterCount = 36;
+      const balusterProfile = [
+        new THREE.Vector2(0.0, 0.08),
+        new THREE.Vector2(0.065, 0.14),
+        new THREE.Vector2(0.038, 0.34),
+        new THREE.Vector2(0.072, 0.56),
+        new THREE.Vector2(0.036, 0.82),
+        new THREE.Vector2(0.062, 0.98),
+        new THREE.Vector2(0.0, 1.02)
+      ];
+      const balusterGeo = new THREE.LatheGeometry(balusterProfile, 14);
+      for (let i = 0; i < balusterCount; i++) {
+        const ang = (i / balusterCount) * Math.PI * 2;
+        const bx = Math.cos(ang) * 4.26;
+        const bz = Math.sin(ang) * 4.26;
+        const post = new THREE.Mesh(balusterGeo, polishedGoldMat);
+        post.position.set(bx, 0, bz);
+        post.castShadow = true;
+        innerRailingGroup.add(post);
+
+        // Decorative filigree ring between balusters
+        const ringGeo = new THREE.TorusGeometry(0.14, 0.018, 8, 20);
+        const ringMesh = new THREE.Mesh(ringGeo, carvedAntiqueGoldMat);
+        const midAng = ang + Math.PI / balusterCount;
+        ringMesh.position.set(Math.cos(midAng) * 4.26, 0.56, Math.sin(midAng) * 4.26);
+        ringMesh.rotation.y = -midAng + Math.PI / 2;
+        innerRailingGroup.add(ringMesh);
+      }
+
+      // Sleek Central Carved Golden Axis Column (r = 1.1m, rising from rotor hub y = -2.3m to canopy y = 4.6m)
+      const centralColProfile = [
+        new THREE.Vector2(0.0, -2.35),
+        new THREE.Vector2(1.45, -2.2),
+        new THREE.Vector2(1.25, -0.7),
+        new THREE.Vector2(1.32, -0.1),
+        new THREE.Vector2(1.28, 0.35),
+        new THREE.Vector2(1.06, 0.65),
+        new THREE.Vector2(0.98, 1.8),
+        new THREE.Vector2(1.08, 2.2),
+        new THREE.Vector2(0.96, 2.55),
+        new THREE.Vector2(0.96, 3.65),
+        new THREE.Vector2(1.26, 4.15),
+        new THREE.Vector2(1.52, 4.55),
+        new THREE.Vector2(0.0, 4.6)
+      ];
+      const centralColGeo = new THREE.LatheGeometry(centralColProfile, 48);
+      const centralColumn = new THREE.Mesh(centralColGeo, domeGoldMat);
+      centralColumn.castShadow = true;
+      centralColumn.receiveShadow = true;
+      lowerDeckGroup.add(centralColumn);
+
+      // 12 Perimeter Carved Golden Pillars at r = 8.8m (y = 0.0m to y = 4.6m)
+      const pillarProfile = [
+        new THREE.Vector2(0.0, 0.0),
+        new THREE.Vector2(0.42, 0.0),
+        new THREE.Vector2(0.42, 0.32),
+        new THREE.Vector2(0.32, 0.55),
+        new THREE.Vector2(0.27, 2.15),
+        new THREE.Vector2(0.34, 2.32),
+        new THREE.Vector2(0.26, 2.48),
+        new THREE.Vector2(0.26, 3.85),
+        new THREE.Vector2(0.44, 4.25),
+        new THREE.Vector2(0.52, 4.58),
+        new THREE.Vector2(0.0, 4.6)
+      ];
+      const pillarGeo = new THREE.LatheGeometry(pillarProfile, 24);
+      const perimeterPillarCount = 12;
+
+      for (let i = 0; i < perimeterPillarCount; i++) {
+        const ang = (i / perimeterPillarCount) * Math.PI * 2;
+        const px = Math.cos(ang) * 8.8;
+        const pz = Math.sin(ang) * 8.8;
+
+        const pillar = new THREE.Mesh(pillarGeo, carvedAntiqueGoldMat);
+        pillar.position.set(px, 0, pz);
+        pillar.castShadow = true;
+        pillar.receiveShadow = true;
+        lowerDeckGroup.add(pillar);
+
+        // Decorative golden architrave bracket connecting adjacent perimeter pillars at y = 4.1m
+        const nextAng = ((i + 1) / perimeterPillarCount) * Math.PI * 2;
+        const midAng = (ang + nextAng) * 0.5;
+        const spanLen = 2 * 8.8 * Math.sin(Math.PI / perimeterPillarCount);
+        const lintelGeo = new THREE.BoxGeometry(spanLen, 0.44, 0.42);
+        const lintel = new THREE.Mesh(lintelGeo, polishedGoldMat);
+        lintel.position.set(Math.cos(midAng) * 8.8, 4.35, Math.sin(midAng) * 8.8);
+        lintel.rotation.y = -midAng + Math.PI / 2;
+        lintel.castShadow = true;
+        lowerDeckGroup.add(lintel);
+      }
+
+      // Low Outer Perimeter Balustrade Rail at r = 9.25m (y = 0.0m to 0.92m)
+      const outerHandrailGeo = new THREE.TorusGeometry(9.25, 0.08, 14, 72);
+      outerHandrailGeo.rotateX(Math.PI / 2);
+      const outerHandrail = new THREE.Mesh(outerHandrailGeo, polishedGoldMat);
+      outerHandrail.position.y = 0.92;
+      lowerDeckGroup.add(outerHandrail);
+
+      for (let i = 0; i < 48; i++) {
+        const ang = (i / 48) * Math.PI * 2;
+        const post = new THREE.Mesh(balusterGeo, carvedAntiqueGoldMat);
+        post.scale.set(0.9, 0.88, 0.9);
+        post.position.set(Math.cos(ang) * 9.25, 0, Math.sin(ang) * 9.25);
+        lowerDeckGroup.add(post);
+      }
+
+      // Ornate Radial-Ribbed Golden Ceiling Canopy at y = 4.6m (matching image 126356.jpg!)
+      const ceilingGroup = new THREE.Group();
+      ceilingGroup.position.y = 4.6;
+      lowerDeckGroup.add(ceilingGroup);
+
+      const ceilingDiscGeo = new THREE.CylinderGeometry(9.55, 9.55, 0.34, 72);
+      const ceilingDisc = new THREE.Mesh(ceilingDiscGeo, deckSlabMat);
+      ceilingDisc.castShadow = true;
+      ceilingDisc.receiveShadow = true;
+      ceilingGroup.add(ceilingDisc);
+
+      // 24 Sculpted 3D Radial Golden Ribs with Lotus Leaf Reliefs on the underside of the ceiling
+      const ribCount = 24;
+      for (let i = 0; i < ribCount; i++) {
+        const ang = (i / ribCount) * Math.PI * 2;
+        const ribHolder = new THREE.Group();
+        ribHolder.rotation.y = ang;
+
+        const ribBarGeo = new THREE.BoxGeometry(0.18, 0.22, 8.2);
+        const ribBar = new THREE.Mesh(ribBarGeo, polishedGoldMat);
+        ribBar.position.set(0, -0.22, 5.25);
+        ribHolder.add(ribBar);
+
+        // Lotus-petal ornament at outer end of each ceiling rib
+        const leafOrnGeo = new THREE.ConeGeometry(0.32, 0.78, 6);
+        leafOrnGeo.rotateX(Math.PI / 2);
+        leafOrnGeo.scale(1.0, 0.28, 1.0);
+        const leafOrn = new THREE.Mesh(leafOrnGeo, polishedGoldMat);
+        leafOrn.position.set(0, -0.24, 8.65);
+        ribHolder.add(leafOrn);
+
+        ceilingGroup.add(ribHolder);
+      }
+
+      // Warm Crimson-Gold Ambient Colonnade Glow inside the open lower deck (matching image 126359.jpg)
+      const colonnadeLight1 = new THREE.PointLight(0xff4d29, 2.4, 15, 1.6);
+      colonnadeLight1.position.set(5.8, 3.1, 3.2);
+      lowerDeckGroup.add(colonnadeLight1);
+
+      const colonnadeLight2 = new THREE.PointLight(0xff9e2c, 2.2, 15, 1.6);
+      colonnadeLight2.position.set(-5.8, 3.1, -3.2);
+      lowerDeckGroup.add(colonnadeLight2);
+
+      const colonnadeLight3 = new THREE.PointLight(0xff5e36, 2.0, 14, 1.6);
+      colonnadeLight3.position.set(-3.2, 2.8, 5.8);
+      lowerDeckGroup.add(colonnadeLight3);
+
+      // -------------------------------------------------------------------------
+      // 5B. NORMAL-SIZED WOMAN STANDING ON THE INTERNALLY HOLLOW LOWER DECK
+      //     Height = 1.68 meters | Standing on walkway at r = 5.25m, y = 0.0m
+      //     Draped in orange-ochre saree, red sindoor/tilak, dark bead necklace
+      // -------------------------------------------------------------------------
+      const womanGroup = new THREE.Group();
+      // Place her on the walkway near the inner carved railing overlooking the hollow void
+      const womanAngle = 0.42;
+      const womanRadius = 5.15;
+      womanGroup.position.set(
+        Math.cos(womanAngle) * womanRadius,
+        0.0,
+        Math.sin(womanAngle) * womanRadius
+      );
+      // Oriented gracefully toward the inner railing and sunlit open colonnade
+      womanGroup.rotation.y = -womanAngle - Math.PI * 0.62;
+      lowerDeckGroup.add(womanGroup);
+
+      // Materials for the woman
+      const skinMat = new THREE.MeshStandardMaterial({
+        color: 0xd99b72,
+        roughness: 0.48,
+        metalness: 0.04
+      });
+      const ochreSareeMat = new THREE.MeshStandardMaterial({
+        color: 0xd98a3c,
+        roughness: 0.62,
+        metalness: 0.08,
+        side: THREE.DoubleSide
+      });
+      const deepOrangeBlouseMat = new THREE.MeshStandardMaterial({
+        color: 0xb84a18,
+        roughness: 0.58,
+        metalness: 0.06
+      });
+      const darkHairMat = new THREE.MeshStandardMaterial({
+        color: 0x171210,
+        roughness: 0.68,
+        metalness: 0.05
+      });
+      const sindoorMat = new THREE.MeshStandardMaterial({
+        color: 0xd91616,
+        emissive: 0x4a0404,
+        roughness: 0.4
+      });
+      const beadNecklaceMat = new THREE.MeshStandardMaterial({
+        color: 0x2b1810,
+        roughness: 0.42,
+        metalness: 0.15
+      });
+
+      // 1. Feet & Sandals (y = 0.0m to 0.035m)
+      for (let side of [-1, 1]) {
+        const footGeo = new THREE.BoxGeometry(0.082, 0.032, 0.21);
+        const foot = new THREE.Mesh(footGeo, skinMat);
+        foot.position.set(side * 0.095, 0.016, 0.02);
+        foot.castShadow = true;
+        womanGroup.add(foot);
+      }
+
+      // 2. Draped Pleated Lower Saree Skirt (y = 0.03m to 0.96m)
+      const skirtProfile = [
+        new THREE.Vector2(0.0, 0.03),
+        new THREE.Vector2(0.21, 0.03),
+        new THREE.Vector2(0.195, 0.35),
+        new THREE.Vector2(0.175, 0.68),
+        new THREE.Vector2(0.155, 0.96),
+        new THREE.Vector2(0.0, 0.96)
+      ];
+      const skirtGeo = new THREE.LatheGeometry(skirtProfile, 32);
+      skirtGeo.scale(1.08, 1.0, 0.86);
+      const skirtMesh = new THREE.Mesh(skirtGeo, ochreSareeMat);
+      skirtMesh.castShadow = true;
+      skirtMesh.receiveShadow = true;
+      womanGroup.add(skirtMesh);
+
+      // Golden Zari Border Hem near ankles (y = 0.06m)
+      const hemTorus = new THREE.TorusGeometry(0.205, 0.012, 8, 32);
+      hemTorus.rotateX(Math.PI / 2);
+      hemTorus.scale(1.08, 0.86, 1.0);
+      const hemMesh = new THREE.Mesh(hemTorus, polishedGoldMat);
+      hemMesh.position.y = 0.065;
+      womanGroup.add(hemMesh);
+
+      // Front center saree pleats relief
+      for (let p = -2; p <= 2; p++) {
+        const pleatGeo = new THREE.CylinderGeometry(0.014, 0.018, 0.91, 8);
+        const pleat = new THREE.Mesh(pleatGeo, ochreSareeMat);
+        pleat.position.set(p * 0.024, 0.49, 0.155);
+        pleat.rotation.x = -0.045;
+        womanGroup.add(pleat);
+      }
+
+      // Upper body group (for subtle breathing animation)
+      const upperBodyGroup = new THREE.Group();
+      upperBodyGroup.position.y = 0.96;
+      womanGroup.add(upperBodyGroup);
+
+      // 3. Fitted Burnt-Orange Blouse / Torso (y = 0.96m to 1.35m)
+      const torsoProfile = [
+        new THREE.Vector2(0.0, 0.0),
+        new THREE.Vector2(0.152, 0.0),
+        new THREE.Vector2(0.142, 0.14),
+        new THREE.Vector2(0.172, 0.27),
+        new THREE.Vector2(0.182, 0.36),
+        new THREE.Vector2(0.085, 0.40),
+        new THREE.Vector2(0.0, 0.40)
+      ];
+      const torsoGeo = new THREE.LatheGeometry(torsoProfile, 28);
+      torsoGeo.scale(1.12, 1.0, 0.82);
+      const torsoMesh = new THREE.Mesh(torsoGeo, deepOrangeBlouseMat);
+      torsoMesh.castShadow = true;
+      upperBodyGroup.add(torsoMesh);
+
+      // 4. Diagonal Draped Saree Pallu across chest over left shoulder
+      const palluGeo = new THREE.CylinderGeometry(0.165, 0.175, 0.44, 24, 1, true, -0.35, 2.35);
+      palluGeo.scale(1.14, 1.0, 0.86);
+      const palluMesh = new THREE.Mesh(palluGeo, ochreSareeMat);
+      palluMesh.position.set(-0.01, 0.20, 0.01);
+      palluMesh.rotation.z = -0.34;
+      palluMesh.castShadow = true;
+      upperBodyGroup.add(palluMesh);
+
+      // Flowing Breeze-Animated Saree Pallu Tail behind her left shoulder
+      const palluTailGeo = new THREE.PlaneGeometry(0.34, 0.82, 10, 20);
+      const palluTailMesh = new THREE.Mesh(palluTailGeo, ochreSareeMat);
+      palluTailMesh.position.set(-0.14, -0.02, -0.17);
+      palluTailMesh.rotation.set(0.18, 0.35, 0.12);
+      palluTailMesh.castShadow = true;
+      upperBodyGroup.add(palluTailMesh);
+
+      // Store base positions of pallu tail vertices for silky wind ripple animation
+      const palluBasePos = Float32Array.from(palluTailGeo.attributes.position.array);
+
+      // 5. Arms, Hands & Golden Bangles
+      // Right arm reaching gracefully forward so hand rests near the carved golden inner railing
+      const rightUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.038, 0.28, 14), skinMat);
+      rightUpperArm.position.set(0.21, 0.24, 0.08);
+      rightUpperArm.rotation.set(-0.55, 0, -0.22);
+      rightUpperArm.castShadow = true;
+      upperBodyGroup.add(rightUpperArm);
+
+      const rightForeArm = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.028, 0.27, 14), skinMat);
+      rightForeArm.position.set(0.25, 0.11, 0.25);
+      rightForeArm.rotation.set(-1.12, 0, -0.1);
+      rightForeArm.castShadow = true;
+      upperBodyGroup.add(rightForeArm);
+
+      const rightHand = new THREE.Mesh(new THREE.SphereGeometry(0.034, 12, 12), skinMat);
+      rightHand.scale.set(0.85, 0.65, 1.35);
+      rightHand.position.set(0.26, 0.07, 0.38);
+      upperBodyGroup.add(rightHand);
+
+      // Left arm relaxed naturally beside her saree
+      const leftUpperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.038, 0.28, 14), skinMat);
+      leftUpperArm.position.set(-0.20, 0.22, 0.02);
+      leftUpperArm.rotation.set(-0.15, 0, 0.18);
+      leftUpperArm.castShadow = true;
+      upperBodyGroup.add(leftUpperArm);
+
+      const leftForeArm = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.028, 0.26, 14), skinMat);
+      leftForeArm.position.set(-0.21, -0.01, 0.09);
+      leftForeArm.rotation.set(-0.42, 0, -0.06);
+      leftForeArm.castShadow = true;
+      upperBodyGroup.add(leftForeArm);
+
+      // Golden bangles on both wrists
+      for (let side of [-1, 1]) {
+        const bangle = new THREE.Mesh(new THREE.TorusGeometry(0.033, 0.006, 8, 18), polishedGoldMat);
+        bangle.rotation.x = Math.PI / 2.6;
+        if (side === 1) {
+          bangle.position.set(0.255, 0.085, 0.33);
+        } else {
+          bangle.position.set(-0.205, -0.10, 0.13);
+        }
+        upperBodyGroup.add(bangle);
+      }
+
+      // 6. Neck & Sacred Dark Rudraksha Bead Necklace (matching image 126353.jpg)
+      const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.056, 0.10, 16), skinMat);
+      neckMesh.position.set(0, 0.42, 0.01);
+      upperBodyGroup.add(neckMesh);
+
+      const necklaceCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(-0.062, 0.39, -0.02),
+        new THREE.Vector3(-0.072, 0.31, 0.09),
+        new THREE.Vector3(0.0, 0.21, 0.145),
+        new THREE.Vector3(0.072, 0.31, 0.09),
+        new THREE.Vector3(0.062, 0.39, -0.02)
+      ]);
+      const necklaceGeo = new THREE.TubeGeometry(necklaceCurve, 28, 0.0075, 8, false);
+      const necklaceMesh = new THREE.Mesh(necklaceGeo, beadNecklaceMat);
+      upperBodyGroup.add(necklaceMesh);
+
+      // 7. Sculpted Head, Facial Features, Red Sindoor/Bindi & Braided Hair (top of head = 1.68m!)
+      const headGroup = new THREE.Group();
+      headGroup.position.set(0, 0.56, 0.015); // 0.96 + 0.56 + 0.16 = 1.68m exact human height!
+      upperBodyGroup.add(headGroup);
+
+      const headGeo = new THREE.SphereGeometry(0.102, 24, 24);
+      headGeo.scale(0.86, 1.08, 0.95);
+      const headMesh = new THREE.Mesh(headGeo, skinMat);
+      headMesh.castShadow = true;
+      headGroup.add(headMesh);
+
+      // Delicate Nose & Golden Nose Stud
+      const noseGeo = new THREE.ConeGeometry(0.013, 0.032, 10);
+      noseGeo.rotateX(Math.PI / 2.3);
+      const noseMesh = new THREE.Mesh(noseGeo, skinMat);
+      noseMesh.position.set(0, -0.008, 0.098);
+      headGroup.add(noseMesh);
+
+      const noseStud = new THREE.Mesh(new THREE.SphereGeometry(0.004, 8, 8), polishedGoldMat);
+      noseStud.position.set(-0.011, -0.014, 0.098);
+      headGroup.add(noseStud);
+
+      // Eyes & Eyebrows
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x1a120e, roughness: 0.2 });
+      for (let side of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.010, 10, 10), eyeMat);
+        eye.scale.set(1.2, 0.75, 0.6);
+        eye.position.set(side * 0.033, 0.014, 0.088);
+        headGroup.add(eye);
+
+        const brow = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.004, 0.008), darkHairMat);
+        brow.position.set(side * 0.034, 0.028, 0.091);
+        brow.rotation.z = -side * 0.1;
+        headGroup.add(brow);
+      }
+
+      // Lips
+      const lipMat = new THREE.MeshStandardMaterial({ color: 0xa64b42, roughness: 0.45 });
+      const lips = new THREE.Mesh(new THREE.SphereGeometry(0.016, 12, 8), lipMat);
+      lips.scale.set(1.35, 0.45, 0.65);
+      lips.position.set(0, -0.042, 0.091);
+      headGroup.add(lips);
+
+      // Crimson Bindi & Hair-Parting Sindoor (matching image 126353.jpg)
+      const bindi = new THREE.Mesh(new THREE.SphereGeometry(0.0055, 10, 10), sindoorMat);
+      bindi.scale.set(1, 1, 0.35);
+      bindi.position.set(0, 0.038, 0.094);
+      headGroup.add(bindi);
+
+      const sindoorLine = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.012, 0.055), sindoorMat);
+      sindoorLine.position.set(0, 0.096, 0.052);
+      sindoorLine.rotation.x = 0.52;
+      headGroup.add(sindoorLine);
+
+      // Dark Wavy Hair Cap & Classical Low Bun
+      const hairCapGeo = new THREE.SphereGeometry(0.108, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.68);
+      hairCapGeo.scale(0.90, 1.08, 0.99);
+      const hairCap = new THREE.Mesh(hairCapGeo, darkHairMat);
+      hairCap.position.set(0, 0.012, -0.012);
+      hairCap.rotation.x = -0.24;
+      hairCap.castShadow = true;
+      headGroup.add(hairCap);
+
+      const hairBun = new THREE.Mesh(new THREE.SphereGeometry(0.056, 16, 16), darkHairMat);
+      hairBun.position.set(0, -0.025, -0.105);
+      hairBun.castShadow = true;
+      headGroup.add(hairBun);
+
+      // -------------------------------------------------------------------------
+      // 5C. UPPER BULBOUS GOLDEN DOME / KALASHA SPIRE (y = 4.6m to y = 19.5m)
+      // -------------------------------------------------------------------------
+      const upperDomeGroup = new THREE.Group();
+      vimanaRoot.add(upperDomeGroup);
+
+      // Bulbous Kalasha Dome Lathe Profile (r_max = 7.65m around y = 9.3m)
+      const domeProfile = [
+        new THREE.Vector2(0.0, 4.6),
+        new THREE.Vector2(6.75, 4.6),
+        new THREE.Vector2(6.95, 5.1),
+        new THREE.Vector2(6.55, 5.65),
+        new THREE.Vector2(7.35, 7.1),
+        new THREE.Vector2(7.68, 9.1),
+        new THREE.Vector2(7.42, 11.2),
+        new THREE.Vector2(6.48, 13.0),
+        new THREE.Vector2(4.95, 14.35),
+        new THREE.Vector2(4.45, 14.75),
+        new THREE.Vector2(4.75, 15.1),
+        new THREE.Vector2(3.65, 16.05),
+        new THREE.Vector2(2.15, 16.65),
+        new THREE.Vector2(0.0, 16.85)
+      ];
+      const domeGeo = new THREE.LatheGeometry(domeProfile, 72);
+      const domeMesh = new THREE.Mesh(domeGeo, domeGoldMat);
+      domeMesh.castShadow = true;
+      domeMesh.receiveShadow = true;
+      upperDomeGroup.add(domeMesh);
+
+      // Embossed Golden Cornice Rings around Dome Equator & Neck
+      [5.65, 9.1, 14.75].forEach((ry, idx) => {
+        const rad = idx === 0 ? 6.62 : idx === 1 ? 7.72 : 4.78;
+        const ring = new THREE.Mesh(
+          new THREE.TorusGeometry(rad, 0.14, 14, 72),
+          polishedGoldMat
+        );
+        ring.rotation.x = Math.PI / 2;
+        ring.position.y = ry;
+        upperDomeGroup.add(ring);
+      });
+
+      // Multi-Pointed Lotus-Star Crown Finial at the Peak (y = 15.6m to y = 19.5m)
+      // Matching the sharp triangular crown leaves in images 126359.jpg, 126362.jpg, 126343.jpg
+      const crownFinialGroup = new THREE.Group();
+      crownFinialGroup.position.y = 15.6;
+      upperDomeGroup.add(crownFinialGroup);
+
+      function createCrownLeafGeometry(h, w, curveOut) {
+        const g = new THREE.BufferGeometry();
+        const verts = new Float32Array([
+          -w * 0.5, 0.0, 0.0,
+           w * 0.5, 0.0, 0.0,
+           0.0,     h * 0.55, curveOut,
+           0.0,     h, -0.35
+        ]);
+        const idx = [
+          0, 1, 2,
+          1, 3, 2,
+          3, 0, 2
+        ];
+        g.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+        g.setIndex(idx);
+        g.computeVertexNormals();
+        return g;
+      }
+
+      const outerCrownLeafGeo = createCrownLeafGeometry(2.75, 1.85, 0.35);
+      const innerCrownLeafGeo = createCrownLeafGeometry(3.45, 1.45, 0.22);
+
+      // Outer ring of 8 sharp golden crown leaves
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        const leaf = new THREE.Mesh(outerCrownLeafGeo, polishedGoldMat);
+        leaf.position.set(Math.cos(ang) * 3.15, 0.1, Math.sin(ang) * 3.15);
+        leaf.rotation.y = -ang + Math.PI / 2;
+        leaf.rotation.x = -0.18;
+        leaf.castShadow = true;
+        crownFinialGroup.add(leaf);
+      }
+
+      // Inner taller ring of 8 staggered sharp lotus-star crown leaves converging at y = 19.5m
+      for (let i = 0; i < 8; i++) {
+        const ang = ((i + 0.5) / 8) * Math.PI * 2;
+        const leaf = new THREE.Mesh(innerCrownLeafGeo, polishedGoldMat);
+        leaf.position.set(Math.cos(ang) * 1.85, 0.65, Math.sin(ang) * 1.85);
+        leaf.rotation.y = -ang + Math.PI / 2;
+        leaf.rotation.x = -0.36;
+        leaf.castShadow = true;
+        crownFinialGroup.add(leaf);
+      }
+
+      // Central Kalasha Spire Tip reaching y = 19.5m
+      const spireCone = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.65, 16), polishedGoldMat);
+      spireCone.position.y = 3.15;
+      crownFinialGroup.add(spireCone);
+
+      // -------------------------------------------------------------------------
+      // 5D. UPPER BENT LOTUS PETALS COVERING THE UPPER DOME (24 PETALS)
+      //     12 Inner + 12 Outer Staggered Sculpted Petals (y = 3.8m to y = 13.7m)
+      // -------------------------------------------------------------------------
+      const upperLotusCupGroup = new THREE.Group();
+      vimanaRoot.add(upperLotusCupGroup);
+
+      // Inner Tier: 12 tall petals bending upward & inward tightly cradling the bulbous dome
+      const innerUpperPetalGeo = createUpperCurvedLotusPetalGeometry({
+        height: 9.6,
+        maxWidth: 4.35,
+        outwardBulge: 1.35,
+        inwardCup: -2.25,
+        tipRecurve: 0.72,
+        cupDepth: 0.62
+      });
+
+      // Outer Tier: 12 wider staggered petals flaring slightly more open like outer lotus cup
+      const outerUpperPetalGeo = createUpperCurvedLotusPetalGeometry({
+        height: 8.2,
+        maxWidth: 4.85,
+        outwardBulge: 2.05,
+        inwardCup: -1.85,
+        tipRecurve: 0.88,
+        cupDepth: 0.68
+      });
+
+      for (let i = 0; i < 12; i++) {
+        // Inner tier petal
+        const angIn = (i / 12) * Math.PI * 2;
+        const pIn = new THREE.Mesh(innerUpperPetalGeo, upperPetalMat);
+        pIn.position.set(Math.cos(angIn) * 8.45, 4.15, Math.sin(angIn) * 8.45);
+        pIn.rotation.y = -angIn + Math.PI / 2;
+        pIn.castShadow = true;
+        pIn.receiveShadow = true;
+        upperLotusCupGroup.add(pIn);
+
+        // Outer staggered tier petal (offset by 15 degrees)
+        const angOut = ((i + 0.5) / 12) * Math.PI * 2;
+        const pOut = new THREE.Mesh(outerUpperPetalGeo, upperPetalMat);
+        pOut.position.set(Math.cos(angOut) * 9.05, 3.75, Math.sin(angOut) * 9.05);
+        pOut.rotation.y = -angOut + Math.PI / 2;
+        pOut.castShadow = true;
+        pOut.receiveShadow = true;
+        upperLotusCupGroup.add(pOut);
+      }
+
+      // -------------------------------------------------------------------------
+      // 5E. FAST-ROTATING LOWER LOTUS PETALS (32 BLADES: 16 + 16 OVERLAPPING TIERS)
+      //     Mounted beneath the hollow lower deck (y = -0.8m to y = -2.2m, r = 22m)
+      // -------------------------------------------------------------------------
+      const lowerRotorGroup = new THREE.Group();
+      lowerRotorGroup.position.y = -1.25;
+      vimanaRoot.add(lowerRotorGroup);
+
+      // Central Golden Rotor Hub Drum
+      const rotorHubProfile = [
+        new THREE.Vector2(0.0, -1.15),
+        new THREE.Vector2(1.15, -0.95),
+        new THREE.Vector2(2.35, -0.45),
+        new THREE.Vector2(2.65, 0.0),
+        new THREE.Vector2(2.35, 0.45),
+        new THREE.Vector2(1.45, 0.65),
+        new THREE.Vector2(0.0, 0.65)
+      ];
+      const rotorHubGeo = new THREE.LatheGeometry(rotorHubProfile, 48);
+      const rotorHubMesh = new THREE.Mesh(rotorHubGeo, carvedAntiqueGoldMat);
+      rotorHubMesh.castShadow = true;
+      lowerRotorGroup.add(rotorHubMesh);
+
+      const upperRotorBladeGeo = createLowerRotorBladeGeometry(20.0, 4.35, 0.24);
+      const lowerRotorBladeGeo = createLowerRotorBladeGeometry(18.6, 4.15, 0.22);
+
+      // 16 Upper Rotor Lotus Blades + 16 Lower Staggered Rotor Lotus Blades = 32 blades
+      for (let i = 0; i < 16; i++) {
+        const ang1 = (i / 16) * Math.PI * 2;
+        const blade1 = new THREE.Mesh(upperRotorBladeGeo, lowerRotorPetalMat);
+        blade1.position.y = 0.18;
+        blade1.rotation.y = ang1;
+        blade1.castShadow = true;
+        blade1.receiveShadow = true;
+        lowerRotorGroup.add(blade1);
+
+        const ang2 = ((i + 0.5) / 16) * Math.PI * 2;
+        const blade2 = new THREE.Mesh(lowerRotorBladeGeo, lowerRotorPetalMat);
+        blade2.position.y = -0.26;
+        blade2.rotation.y = ang2;
+        blade2.castShadow = true;
+        blade2.receiveShadow = true;
+        lowerRotorGroup.add(blade2);
+      }
+
+      // Speed-Reactive Golden Motion-Blur Halo Disc (visible at high RPM like image 126359.jpg)
+      const blurHaloGeo = new THREE.RingGeometry(4.2, 22.4, 96, 4);
+      blurHaloGeo.rotateX(-Math.PI / 2);
+      const blurHaloMat = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending,
+        uniforms: {
+          uTime: { value: 0 },
+          uBlurStrength: { value: 0.62 }
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          varying vec3 vPos;
+          void main() {
+            vUv = uv;
+            vPos = position;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          uniform float uBlurStrength;
+          varying vec2 vUv;
+          varying vec3 vPos;
+          void main() {
+            float r = length(vPos.xz);
+            float normR = clamp((r - 4.2) / 18.2, 0.0, 1.0);
+            float angle = atan(vPos.z, vPos.x);
+
+            // Radial envelope: soft inner edge, bright mid-blade sweep, feathered outer tip
+            float radialMask = smoothstep(0.0, 0.18, normR) * (1.0 - smoothstep(0.68, 1.0, normR));
+
+            // High-frequency rotational motion streaks
+            float streak1 = 0.5 + 0.5 * sin(angle * 16.0 - uTime * 28.0 + normR * 3.5);
+            float streak2 = 0.5 + 0.5 * cos(angle * 32.0 - uTime * 42.0 - normR * 2.0);
+            float ringWave = 0.75 + 0.25 * sin(normR * 28.0);
+
+            float intensity = radialMask * ringWave * mix(0.45, 1.0, streak1 * 0.6 + streak2 * 0.4);
+            vec3 goldCore = vec3(1.0, 0.82, 0.42);
+            vec3 warmRim = vec3(0.95, 0.62, 0.22);
+            vec3 col = mix(warmRim, goldCore, 1.0 - normR * 0.6);
+
+            gl_FragColor = vec4(col, intensity * uBlurStrength * 0.52);
+          }
+        `
+      });
+      const blurHaloMesh = new THREE.Mesh(blurHaloGeo, blurHaloMat);
+      blurHaloMesh.position.y = -1.25;
+      vimanaRoot.add(blurHaloMesh);
+
+      // =========================================================================
+      // 6. HIGH-ALTITUDE ENVIRONMENT: SUNLIT CLOUDS, VALLEY TERRAIN & WIND VORTEX
+      // =========================================================================
+
+      // 6A. Lush Green Mountain Valleys Far Below (y = -115m)
+      const terrainSize = 1400;
+      const terrainSegs = 128;
+      const terrainGeo = new THREE.PlaneGeometry(terrainSize, terrainSize, terrainSegs, terrainSegs);
+      terrainGeo.rotateX(-Math.PI / 2);
+
+      const tPos = terrainGeo.attributes.position;
+      const tColors = new Float32Array(tPos.count * 3);
+      const valleyCol = new THREE.Color(0x1f3d24);
+      const forestCol = new THREE.Color(0x3b6332);
+      const ridgeCol = new THREE.Color(0x7c8052);
+
+      for (let i = 0; i < tPos.count; i++) {
+        const vx = tPos.getX(i);
+        const vz = tPos.getZ(i);
+        // Multi-octave ridge noise
+        const h1 = Math.sin(vx * 0.008) * Math.cos(vz * 0.008) * 34.0;
+        const h2 = Math.sin(vx * 0.021 + 1.3) * Math.sin(vz * 0.019) * 16.0;
+        const h3 = Math.cos(vx * 0.048 - vz * 0.042) * 6.5;
+        const ridge = Math.abs(Math.sin(vx * 0.006 + vz * 0.005)) * 28.0;
+        const vy = h1 + h2 + h3 + ridge;
+        tPos.setY(i, vy);
+
+        const normH = THREE.MathUtils.clamp((vy + 35) / 95, 0, 1);
+        const c = new THREE.Color();
+        if (normH < 0.55) {
+          c.lerpColors(valleyCol, forestCol, normH / 0.55);
+        } else {
+          c.lerpColors(forestCol, ridgeCol, (normH - 0.55) / 0.45);
+        }
+        tColors[i * 3] = c.r;
+        tColors[i * 3 + 1] = c.g;
+        tColors[i * 3 + 2] = c.b;
+      }
+      terrainGeo.setAttribute('color', new THREE.BufferAttribute(tColors, 3));
+      terrainGeo.computeVertexNormals();
+
+      const terrainMat = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.92,
+        metalness: 0.02
+      });
+      const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
+      terrainMesh.position.y = -118;
+      scene.add(terrainMesh);
+
+      // 6B. Golden-Hour Sunlit Cumulus Cloud Banks (y = -32m to -75m)
+      function createSoftCloudTexture() {
+        const size = 256;
+        const c = document.createElement('canvas');
+        c.width = size; c.height = size;
+        const ctx = c.getContext('2d');
+        const g = ctx.createRadialGradient(size * 0.5, size * 0.46, 12, size * 0.5, size * 0.5, size * 0.5);
+        g.addColorStop(0.0, 'rgba(255, 248, 232, 0.92)');
+        g.addColorStop(0.42, 'rgba(255, 224, 175, 0.65)');
+        g.addColorStop(0.75, 'rgba(222, 176, 126, 0.24)');
+        g.addColorStop(1.0, 'rgba(210, 165, 118, 0.0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, size, size);
+        const tex = new THREE.CanvasTexture(c);
+        tex.encoding = THREE.sRGBEncoding;
+        return tex;
+      }
+
+      const cloudTex = createSoftCloudTexture();
+      const cloudSprites = [];
+      const cloudGroup = new THREE.Group();
+      scene.add(cloudGroup);
+
+      for (let i = 0; i < 165; i++) {
+        const sprMat = new THREE.SpriteMaterial({
+          map: cloudTex,
+          color: i % 3 === 0 ? 0xffe6bd : 0xfff3de,
+          transparent: true,
+          opacity: 0.68 + Math.random() * 0.25,
+          depthWrite: false
+        });
+        const spr = new THREE.Sprite(sprMat);
+        const spread = 460;
+        spr.position.set(
+          (Math.random() - 0.5) * spread * 2,
+          -34 - Math.random() * 44,
+          (Math.random() - 0.5) * spread * 2
+        );
+        const scale = 55 + Math.random() * 85;
+        spr.scale.set(scale * 1.45, scale * 0.85, 1);
+        cloudGroup.add(spr);
+        cloudSprites.push(spr);
+      }
+
+      // 6C. Swirling Wind / Cloud Vortex Particles Around the Fast-Spinning Rotor (matching image 126362.jpg)
+      const vortexCount = 950;
+      const vortexGeo = new THREE.BufferGeometry();
+      const vortexPositions = new Float32Array(vortexCount * 3);
+      const vortexMeta = [];
+
+      for (let i = 0; i < vortexCount; i++) {
+        const radius = 12.5 + Math.random() * 16.5;
+        const angle = Math.random() * Math.PI * 2;
+        const yOff = -3.8 + Math.random() * 7.5;
+        vortexPositions[i * 3] = Math.cos(angle) * radius;
+        vortexPositions[i * 3 + 1] = yOff;
+        vortexPositions[i * 3 + 2] = Math.sin(angle) * radius;
+        vortexMeta.push({
+          radius,
+          angle,
+          yBase: yOff,
+          speedFactor: 0.65 + Math.random() * 0.75,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+      vortexGeo.setAttribute('position', new THREE.BufferAttribute(vortexPositions, 3));
+
+      const vortexMat = new THREE.PointsMaterial({
+        color: 0xffdf9e,
+        size: 0.42,
+        map: cloudTex,
+        transparent: true,
+        opacity: 0.58,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const vortexPoints = new THREE.Points(vortexGeo, vortexMat);
+      vimanaRoot.add(vortexPoints);
+
+      // =========================================================================
+      // 7. CAMERA PRESETS & INTERACTIVE CONTROLS
+      // =========================================================================
+      // Woman stands at (wx, 0, wz) = (cos(0.42)*5.15, 0, sin(0.42)*5.15) ≈ (4.70, 0, 2.10)
+      const wx = Math.cos(womanAngle) * womanRadius;
+      const wz = Math.sin(womanAngle) * womanRadius;
+
+      const cameraPresets = [
+        {
+          // 1. Woman & Hollow Deck: Interior colonnade shot framing the 1.68m woman standing
+          // beside the inner golden railing looking down through the hollow deck void at the spinning rotor
+          name: '1. Woman & Hollow Deck',
+          pos: new THREE.Vector3(wx + 2.35, 2.15, wz + 2.45),
+          target: new THREE.Vector3(wx - 2.45, 0.35, wz - 1.65)
+        },
+        {
+          // 2. Aerial Lotus Vimana: High three-quarter establishing cinematic view
+          name: '2. Aerial Lotus Vimana',
+          pos: new THREE.Vector3(28.5, 24.5, 31.0),
+          target: new THREE.Vector3(0.0, 5.2, 0.0)
+        },
+        {
+          // 3. Upper Curved Lotus Petals: Hero close-up of the 24 bent lotus petals cupping the golden dome
+          name: '3. Upper Curved Lotus Petals',
+          pos: new THREE.Vector3(16.8, 12.6, 17.4),
+          target: new THREE.Vector3(0.0, 9.2, 0.0)
+        },
+        {
+          // 4. Fast Rotor & Under-Deck: Dramatic low/side angle showing the 32 high-speed spinning blades
+          name: '4. Fast Rotor & Under-Deck',
+          pos: new THREE.Vector3(24.5, -4.6, 26.5),
+          target: new THREE.Vector3(0.0, -0.5, 0.0)
+        }
+      ];
+
+      let activePresetIndex = 0;
+      let isTransitioningCamera = false;
+      const goalCamPos = cameraPresets[0].pos.clone();
+      const goalCamTarget = cameraPresets[0].target.clone();
+
+      // Initialize directly at Preset 0 ("1. Woman & Hollow Deck")
+      camera.position.copy(goalCamPos);
+      controls.target.copy(goalCamTarget);
+      controls.update();
+
+      // Cancel preset lerp immediately if the user drags or scrolls manually
+      controls.addEventListener('start', () => {
+        isTransitioningCamera = false;
+      });
+
+      const presetButtons = document.querySelectorAll('.preset-btn');
+      function applyCameraPreset(idx) {
+        activePresetIndex = idx;
+        goalCamPos.copy(cameraPresets[idx].pos);
+        goalCamTarget.copy(cameraPresets[idx].target);
+        isTransitioningCamera = true;
+
+        presetButtons.forEach((btn, i) => {
+          if (i === idx) btn.classList.add('active');
+          else btn.classList.remove('active');
+        });
+      }
+
+      presetButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-preset'), 10);
+          applyCameraPreset(idx);
+        });
+      });
+
+      // Rotor Speed Slider & Slow-Mo Inspect Toggle
+      let rotorSpeed = 15.0; // Default very fast rotation (15 rad/s)
+      let isSlowMo = false;
+      const speedSlider = document.getElementById('rotor-speed-slider');
+      const speedReadout = document.getElementById('speed-readout');
+      const slowmoBtn = document.getElementById('slowmo-btn');
+
+      function updateRotorSpeedUI(val) {
+        rotorSpeed = parseFloat(val);
+        speedSlider.value = rotorSpeed.toFixed(1);
+        const rpm = Math.round((rotorSpeed * 60) / (Math.PI * 2));
+        speedReadout.textContent = `${rotorSpeed.toFixed(1)} rad/s (${rpm} RPM)`;
+      }
+
+      speedSlider.addEventListener('input', (e) => {
+        isSlowMo = false;
+        slowmoBtn.textContent = 'Slow-Mo';
+        slowmoBtn.classList.remove('bg-amber-400/45', 'border-amber-200');
+        updateRotorSpeedUI(e.target.value);
+      });
+
+      slowmoBtn.addEventListener('click', () => {
+        isSlowMo = !isSlowMo;
+        if (isSlowMo) {
+          slowmoBtn.textContent = 'Full Speed';
+          slowmoBtn.classList.add('bg-amber-400/45', 'border-amber-200');
+          updateRotorSpeedUI(1.4);
+        } else {
+          slowmoBtn.textContent = 'Slow-Mo';
+          slowmoBtn.classList.remove('bg-amber-400/45', 'border-amber-200');
+          updateRotorSpeedUI(15.0);
+        }
+      });
+
+      // Toggle UI Visibility
+      let uiVisible = true;
+      const toggleUiBtn = document.getElementById('toggle-ui-btn');
+      const toggleUiLabel = document.getElementById('toggle-ui-label');
+      const hudHeader = document.getElementById('hud-header');
+      const hudControls = document.getElementById('hud-controls');
+
+      function toggleHUD() {
+        uiVisible = !uiVisible;
+        if (uiVisible) {
+          hudHeader.style.opacity = '1';
+          hudControls.style.opacity = '1';
+          hudControls.style.pointerEvents = 'none';
+          toggleUiLabel.textContent = 'Hide UI';
+        } else {
+          hudHeader.style.opacity = '0.28';
+          hudControls.style.opacity = '0';
+          toggleUiLabel.textContent = 'Show UI';
+        }
+      }
+
+      toggleUiBtn.addEventListener('click', toggleHUD);
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'h' || e.key === 'H') toggleHUD();
+        if (e.key === '1') applyCameraPreset(0);
+        if (e.key === '2') applyCameraPreset(1);
+        if (e.key === '3') applyCameraPreset(2);
+        if (e.key === '4') applyCameraPreset(3);
+      });
+
+      // =========================================================================
+      // 8. RESPONSIVE RESIZE & ANIMATION LOOP
+      // =========================================================================
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      const clock = new THREE.Clock();
+      let prevHoverY = 0;
+
+      function animate() {
+        requestAnimationFrame(animate);
+
+        const dt = Math.min(clock.getDelta(), 0.05);
+        const elapsed = clock.getElapsedTime();
+
+        // 1. Very Fast Continuous Rotation of Lower Lotus Rotor Blades
+        lowerRotorGroup.rotation.y += rotorSpeed * dt;
+
+        // Update speed-reactive golden motion-blur halo disc
+        const blurFactor = THREE.MathUtils.clamp((rotorSpeed - 2.5) / 14.0, 0.0, 1.0);
+        blurHaloMat.uniforms.uTime.value = elapsed * (rotorSpeed / 15.0);
+        blurHaloMat.uniforms.uBlurStrength.value = blurFactor;
+
+        // 2. Subtle Aerodynamic Hover Buoyancy of the Pushpaka Vimana
+        const hoverY = Math.sin(elapsed * 1.15) * 0.28;
+        const deltaHoverY = hoverY - prevHoverY;
+        prevHoverY = hoverY;
+        vimanaRoot.position.y = hoverY;
+        vimanaRoot.rotation.z = Math.sin(elapsed * 0.72) * 0.012;
+        vimanaRoot.rotation.x = Math.cos(elapsed * 0.65) * 0.010;
+
+        // Keep camera & orbit target locked smoothly to the Vimana's hover frame
+        camera.position.y += deltaHoverY;
+        controls.target.y += deltaHoverY;
+
+        // Smooth camera preset interpolation
+        if (isTransitioningCamera) {
+          const targetGoalPos = goalCamPos.clone();
+          targetGoalPos.y += hoverY;
+          const targetGoalLook = goalCamTarget.clone();
+          targetGoalLook.y += hoverY;
+
+          camera.position.lerp(targetGoalPos, 1.0 - Math.exp(-4.5 * dt));
+          controls.target.lerp(targetGoalLook, 1.0 - Math.exp(-4.5 * dt));
+
+          if (
+            camera.position.distanceTo(targetGoalPos) < 0.04 &&
+            controls.target.distanceTo(targetGoalLook) < 0.04
+          ) {
+            isTransitioningCamera = false;
+          }
+        }
+
+        // 3. Normal-Sized Woman Subtle Breathing, Head Gaze & Saree Breeze Animation
+        upperBodyGroup.scale.y = 1.0 + Math.sin(elapsed * 2.1) * 0.008;
+        headGroup.rotation.y = Math.sin(elapsed * 0.65) * 0.14;
+        headGroup.rotation.x = 0.16 + Math.cos(elapsed * 0.85) * 0.035; // Looking slightly down toward the hollow void & horizon
+
+        // Gentle wind wave along her saree pallu tail
+        const pArr = palluTailGeo.attributes.position.array;
+        for (let i = 0; i < pArr.length; i += 3) {
+          const py = palluBasePos[i + 1];
+          const normDown = THREE.MathUtils.clamp((0.41 - py) / 0.82, 0, 1);
+          pArr[i + 2] =
+            palluBasePos[i + 2] +
+            Math.sin(elapsed * 4.6 - normDown * 5.2) * 0.032 * normDown;
+          pArr[i] =
+            palluBasePos[i] +
+            Math.cos(elapsed * 3.8 - normDown * 4.0) * 0.018 * normDown;
+        }
+        palluTailGeo.attributes.position.needsUpdate = true;
+
+        // 4. Swirling Vortex Wind Particles Around the Rotor
+        const vArr = vortexGeo.attributes.position.array;
+        const vortexAngularVel = (0.35 + rotorSpeed * 0.11) * dt;
+        for (let i = 0; i < vortexCount; i++) {
+          const m = vortexMeta[i];
+          m.angle += vortexAngularVel * m.speedFactor;
+          const rWave = m.radius + Math.sin(elapsed * 2.0 + m.phase) * 0.65;
+          vArr[i * 3] = Math.cos(m.angle) * rWave;
+          vArr[i * 3 + 1] = m.yBase + Math.sin(elapsed * 2.6 + m.phase) * 0.55;
+          vArr[i * 3 + 2] = Math.sin(m.angle) * rWave;
+        }
+        vortexGeo.attributes.position.needsUpdate = true;
+
+        // 5. Forward Flight Motion: Drifting Sunlit Clouds & Scrolling Valley Terrain Below
+        const flightSpeed = 14.0 + rotorSpeed * 0.65;
+        for (let i = 0; i < cloudSprites.length; i++) {
+          const spr = cloudSprites[i];
+          spr.position.z += flightSpeed * dt;
+          if (spr.position.z > 460) {
+            spr.position.z -= 920;
+          }
+        }
+        terrainMesh.position.z += flightSpeed * 0.42 * dt;
+        if (terrainMesh.position.z > 220) {
+          terrainMesh.position.z -= 440;
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+      }
+
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          loadingScreen.style.opacity = '0';
+          setTimeout(() => {
+            loadingScreen.style.display = 'none';
+          }, 700);
+        }, 350);
+        animate();
+      });
+    })();
+  </script>
+</body>
+</html>
+```
